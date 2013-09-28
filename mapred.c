@@ -23,7 +23,7 @@ int main(int args, char * argv[]){
 
   /* check for correct command line args*/
   if(args !=15 || args !=10){
-    printf("Please check number of arguments");
+    printf("Please check number of arguments\n");
     return 1;
   }
 
