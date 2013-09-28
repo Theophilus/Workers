@@ -28,8 +28,8 @@ int main(int args, char * argv[]){
   }
 
   char c;
-  size_t filemap_shmid;
-  size_t main_shmid;
+  int filemap_shmid;
+  int  main_shmid;
   key_t main_mem_key;
   key_t filemap_mem_key;
   char *shm;
