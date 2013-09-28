@@ -1,3 +1,3 @@
 
 all:
-	gcc -Wall mapred.c -o mapred  
+	gcc -g -Wall mapred.c -o mapred  

@@ -10,7 +10,7 @@ void reduce();
 
 const int FILEMAP_KEY= 1234;
 const int MAIN_KEY= 1235;
-#define SHMSZ 1024;
+#define SHMSZ 1024
 
 typedef struct word_key{
   char word[20];
@@ -23,7 +23,7 @@ int main(int args, char * argv[]){
 
   /* check for correct command line args*/
   if(args !=15 || args !=10){
-    printf("Please check number of arguments");
+    printf("Please check number of arguments\n");
     return 1;
   }
 
@@ -41,16 +41,16 @@ int main(int args, char * argv[]){
   /* Create filemap memory segment. */
   
   if ( (filemap_shmid = shmget(filemap_mem_key, SHMSZ,  0666)) < 0){
-    //perror("shmget");
-    printf("shmget error");
+    perror("shmget");
+    // printf("shmget error");
     exit(1);
   }
 
   /* Create main memory segment.*/
  
  if ((main_shmid = shmget(main_mem_key, SHMSZ, IPC_CREAT | 0666)) < 0) {
-   //perror("shmget");
-   printf("shmget error"); 
+   perror("shmget");
+   //printf("shmget error"); 
    exit(1);
   }
 
