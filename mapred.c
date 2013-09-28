@@ -10,7 +10,7 @@ void reduce();
 
 const int FILEMAP_KEY= 1234;
 const int MAIN_KEY= 1235;
-#define SHMSZ 1024;
+#define SHMSZ 1024
 
 typedef struct word_key{
   char word[20];
@@ -28,8 +28,8 @@ int main(int args, char * argv[]){
   }
 
   char c;
-  size_t filemap_shmid;
-  size_t main_shmid;
+  int filemap_shmid;
+  int  main_shmid;
   key_t main_mem_key;
   key_t filemap_mem_key;
   char *shm;
@@ -41,16 +41,16 @@ int main(int args, char * argv[]){
   /* Create filemap memory segment. */
   
   if ( (filemap_shmid = shmget(filemap_mem_key, SHMSZ,  0666)) < 0){
-    //perror("shmget");
-    printf("shmget error");
+    perror("shmget");
+    // printf("shmget error");
     exit(1);
   }
 
   /* Create main memory segment.*/
  
  if ((main_shmid = shmget(main_mem_key, SHMSZ, IPC_CREAT | 0666)) < 0) {
-   //perror("shmget");
-   printf("shmget error"); 
+   perror("shmget");
+   //printf("shmget error"); 
    exit(1);
   }
 
