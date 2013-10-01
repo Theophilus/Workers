@@ -8,11 +8,13 @@
 
 void map();
 void reduce();
-int get_Fptr_num();
+void add_map_to_shm();
 
 char IN_FILE[20];
-
-pthread_mutex_t lock;
+char OUT_FILE[20];
+int file_ptr;
+int filechunk_size;
+//pthread_mutex_t lock;
 
 #define SHMSZ 1024
 
@@ -30,22 +32,26 @@ int main(int args, char * argv[]){
     return 1;
     }*/
     
-  int *filemap;
+  int *filemap,shm;
   int shmid;
-  const char *shm_name="OS";
+  const char *shm_name="filemap";
+  
   /* connect file name to global file variable */
-  //IN_FILE= argv[10];
-  
-  
+  IN_FILE= argv[10];
+  //OUT_FILE= argv[0];
    
   	 /* create shared memory segment. */
   shmid = shm_open(shm_name, O_CREAT | O_RDWR, 0666);
-    //perror("shm_open");
-    //  exit(1);
   
 
 	/* configure size */
 	ftruncate(shmid,SHMSZ);
+	
+	
+	int num_map= atoi(argv[6]);
+  	int num_red= atoi(argv[8]);
+  	
+	filechunk_size=(sizeof(IN_FILE)/num_map;
 	
 	//printf("before\n");
 	
@@ -53,40 +59,34 @@ int main(int args, char * argv[]){
   if((strcmp(argv[4],"procs"))==0){ // do process implementation
   
  //   printf(" in process\n");
-    int num_map= atoi(argv[6]);
-  	int num_red= atoi(argv[8]);
+  	printf("num procs: %d\n",num_map);
   	
   	/* map shared memory to object*/
 	filemap=mmap(0,SHMSZ,PROT_WRITE,MAP_SHARED,shmid,0);
   
-  //printf("before map creator\n");
-   int i;
-  for(i=0; i < num_map ; i++){
-  	*filemap = 1+i;
-  	filemap++;
-  }
-  *filemap=NULL;
   
-
 //  printf("after map creator\n");
   /* connect map to shared memory*/
+  int i;
   pid_t pid;
     for( i=0; i<num_map;i++){
-     
-    	if((pid=fork()) == 0){
-    	//	map();
-    	printf("fork fptr number %d\n",getpid());
+     pid_t pid=fork();
+    	if((pid) == 0){
+    	file_ptr=1+i;
+    		map();
+    	//printf("fork fptr number %d\n",getpid());
+    	exit(0);
+   		}
+   		else if(pid<0){
+   			printf("There was a fork error in %d count\n",i);
    		}
    		else{
-   			//printf("There was a fork error in %d count\n",i);
+   		
+   		wait(NULL);
    		}
     }
     //reduce();
-    /*
-     if ((shmd = shmctl(shmid,)) == (int *) -1) {
-        perror("shmat");
-        exit(1);
-    }*/
+   
   }
   else if ((strcmp(argv[4],"threads"))==0){ // do thread implementation
 
@@ -103,44 +103,49 @@ int main(int args, char * argv[]){
 
 
 void map(){
-  //printf("I was in map\n");
+  printf("I was in map\n");
   
   /*
   int shmid;
-  key_t key;
   int *shm;
   int *filemap;
-
-  key = shm_key;
-
-  /*
-   * Locate shared memory segment.
-   
-  if ((shmid = shmget(key, SHMSZ, 0666)) < 0) {
-    perror("shmget");
-    exit(1);
-  }
-
-  /*
-   * attach the segment to our data space.
-   
-  if ((shm = shmat(shmid, NULL, 0)) == (void *) -1) {
-    perror("shmat");
-    exit(1);
-  }
-
-  /*
-   * read what the server put in the memory.
-   
-
-  for (filemap = shm; *filemap != NULL; filemap++){
-  printf("Value: %d\n",*filemap);
-   
-  }
-	printf("I was at the end of map\n");
+  int start_line;
 */
-	int fptrnum= get_Fptr_num();
-	printf("%d got fptr number %d\n",getpid(), fptrnum);
+
+	/* get file pointer number*/
+	int fptr_num= file_ptr;
+	printf("%d got fptr number %d\n",getpid(), fptr_num);
+	
+	char buffer=malloc(filechunk_size);
+	if(fptr_num ==1){
+		start_line=1;
+	
+	}
+	else{
+		start_line= (filechunk_size*(fptr_num-1))+1;
+	
+	}
+	FILE *input= IN_FILE;
+	char line[130];
+  if( (input=fopen(inputfile,"r")) == NULL){
+      printf("%s does not exist\n",inputfile);
+      exit(1);
+    }
+	else{
+	  while(!feof(input)){
+	  	fseek(
+	    //fread(buff,sizeof(buff),1,input);
+	    //printf("%s file read",buff);
+	    //fwrite(buff,sizeof(buff),1,output);
+	    
+	    fgets(buff,sizeof(buff),input);
+	    fputs(buff,output);
+	  }
+	  fclose(output);
+	}
+      fclose(input);
+      
+    }
 	
 }
 
@@ -151,42 +156,9 @@ void reduce(){
 
 }
 
+void add_map_to_shm(char *result){
 
-int get_Fptr_num(){
-	//printf("I was in get function\n");
-	
-  int shmid;
-  int *fptr;
-  const char *shm_name="OS";
-  
-  //pthread_mutex_lock(&lock);
-  
-	 /* create shared memory segment. */
-  shmid = shm_open(shm_name, O_RDWR,  0666);
-    //perror("shm_open");
 
-  
-	
-  fptr=mmap(0,SHMSZ,PROT_READ | PROT_WRITE,MAP_SHARED,shmid,0);
-	
-	int ptr_num;
-	
-	for(; *fptr != NULL ; fptr++){
-		
-	if( *fptr == -1){
-			//continue;
-			//printf("I was in continue\n");
-		}
-		else{
-			//printf("I was in mapper\n");
-			/* read number and write "*" */
-			ptr_num = *fptr;
-			*fptr = (-1);
-		 }
-	}
-	 
-	//pthread_mutex_unlock(&lock);
-	
-	return ptr_num;
+
 }
 
