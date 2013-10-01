@@ -4,6 +4,7 @@
 #include <fcntl.h>
 #include <sys/shm.h>
 #include <sys/stat.h>
+#include <sys/mman.h>
 
 void map();
 void reduce();
@@ -31,17 +32,17 @@ int main(int args, char * argv[]){
     
   int *filemap;
   int shmid;
-  char *shm_name=filemap;
+  const char *shm_name="OS";
   /* connect file name to global file variable */
   //IN_FILE= argv[10];
   
   
    
   	 /* create shared memory segment. */
-  if ( (shmid = shm_open(shm_name, O_CREAT|O_RDRW,  0666)) < 0){
-    perror("shm_open");
-    exit(1);
-  }
+  shmid = shm_open(shm_name, O_CREAT | O_RDWR, 0666);
+    //perror("shm_open");
+    //  exit(1);
+  
 
 	/* configure size */
 	ftruncate(shmid,SHMSZ);
@@ -56,7 +57,7 @@ int main(int args, char * argv[]){
   	int num_red= atoi(argv[8]);
   	
   	/* map shared memory to object*/
-  filemap=mmap(0,SHMSZ,PROT_WRITE,MAP_SHARED,shmid);
+	filemap=mmap(0,SHMSZ,PROT_WRITE,MAP_SHARED,shmid,0);
   
   //printf("before map creator\n");
    int i;
@@ -156,37 +157,33 @@ int get_Fptr_num(){
 	
   int shmid;
   int *fptr;
-  char *shm_name=filemap;
+  const char *shm_name="OS";
   
   //pthread_mutex_lock(&lock);
   
 	 /* create shared memory segment. */
-  if ( (shmid = shm_open(shm_name, O_RDRW,  0666)) < 0){
-    perror("shm_open");
-    exit(1);
-  }
+  shmid = shm_open(shm_name, O_RDWR,  0666);
+    //perror("shm_open");
+
+  
 	
-	fptr=mmap(0,SHMSZ,PROT_READ |PROT_WRITE,MAP_SHARED,shmid);
+  fptr=mmap(0,SHMSZ,PROT_READ | PROT_WRITE,MAP_SHARED,shmid,0);
 	
 	int ptr_num;
 	
-	for(; *filemap != NULL ; filemap++){
+	for(; *fptr != NULL ; fptr++){
 		
-	if( *filemap == -1){
+	if( *fptr == -1){
 			//continue;
 			//printf("I was in continue\n");
 		}
 		else{
 			//printf("I was in mapper\n");
 			/* read number and write "*" */
-			ptr_num = *filemap;
-			*filemap = (-1);
+			ptr_num = *fptr;
+			*fptr = (-1);
 		 }
 	}
-	if ((shmd = shmdt(shm)) == -1) {
-       		 perror("shmat");
-       		 exit(1);
-   		 	}
 	 
 	//pthread_mutex_unlock(&lock);
 	
