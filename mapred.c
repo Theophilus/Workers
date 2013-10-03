@@ -20,10 +20,11 @@ int job_num;
 
 #define SHMSZ 1024
 
-typedef union word_key{
- 	char word;
+typedef struct word_key{
+ 	char *word;
 	int count;
-}Word_key;
+	struct word_key *nextPtr;
+} Word_key;
 
 
 int main(int args, char * argv[]){
@@ -121,26 +122,32 @@ void map(){
 	*/
 	
 	/* word key pointer*/
-	Word_key wk;
-	
-	Word_key *word_key_ptr;
+	Word_key *main_ptr;
 	Word_key *wk_ptr;
+	Word_key *search_ptr;
+	Word_key *curr_ptr;
+	
+	int word_exist=-1;
+	
+	//main_ptr=malloc(sizeof(Word_key));
 	
 	/* word buff*/
-	char str[80];
+	//char str[80];
 	//printf("size of string :%d\n", sizeof(str));
 	
 	/* get file pointer number*/
 	// printf("Job number =>%d\n",job_num);
-	int start_pos=schedule[job_num];
-	int end_pos=schedule[job_num+1]-1;
 	
-	//printf("%d got start number =>%u and end number =>%u\n",getpid(),start_pos, end_pos);
+	int start_pos=schedule[job_num];
+	int end_pos=schedule[job_num+1];
+	
+	printf("%d got start number =>%u and end number =>%u\n",getpid(),start_pos, end_pos);
 	
 	//char buffer=malloc(filechunk_size);
 	
 	FILE *fp;
-	char line[130];
+	char line[20];
+	char *str;
 	// printf("before file loop");
 	if( (fp=fopen(IN_FILE,"r")) == NULL){
 		printf("%s does not exist\n",IN_FILE);
@@ -151,34 +158,51 @@ void map(){
 		fseek(fp,start_pos,SEEK_CUR);
 		printf("fptr pos =>%d\n",ftell(fp));
 		
-	 	while(fp != end_pos){
+	 	while( ftell(fp) != end_pos){
 	  		/* get a word from file */
-			fscanf(fp,"%s",line);
-			printf("word scanned =>%s\n",line);
-			/* check is word already exists */
-			for(wk_ptr = word_key_ptr; wk_ptr != NULL; wk_ptr++){
-			printf("I was in for loop\n");
+			fscanf(fp,"%s",&str);
+			printf("word scanned =>%s\n",&str);
 			
-				if( strcmp((*wk_ptr).word,line)==0){
-					wk.count++;
-					printf("I was in counter with count =>%d\n",wk.count);
-				}
-				else{
-					printf("A new word was created\n");
-					wk.word=line;
-					wk.count=1;
+			search_ptr=main_ptr;
+			while( search_ptr != NULL ){
+				//printf("in loop with word: %s\n",search_ptr->word);
 				
+				if( str == search_ptr->word ){
+					printf("word exists!!!!!\n");
+					word_exist=0;
+					search_ptr->count++;
+					printf("word: [%s] count:[%d]\n",&search_ptr->word,search_ptr->count);
+					
+					break;
 				}
-	  		
-	  		}
-	  		
-	  		*wk_ptr++=wk;
+				
+				search_ptr=search_ptr->nextPtr;
+			}
+			
+			if( word_exist = -1 ){
+			    printf("in new word\n");
+			    wk_ptr=malloc(sizeof(Word_key));
+				wk_ptr->word=str;
+				wk_ptr->count=1;
+			    
+			    if(main_ptr == NULL){
+			    
+			    	printf("in  NULL new word\n");
+			    	main_ptr = curr_ptr = wk_ptr;
+			    }
+			    else{
+			    	printf("in next new word\n");
+					curr_ptr->nextPtr= wk_ptr;
+					curr_ptr= curr_ptr->nextPtr;	
+				}
+			}
+				
 	 	}
 	 
 	}
       fclose(fp);
       
-    
+    free(wk_ptr);
 	
 }
 
@@ -208,11 +232,11 @@ void *run_job_scheduler(int maps){
 		//printf(" fp position before => %d char %c\n",ftell(fp),fgetc(fp));
 		
 		f_chunk_size=f_size/maps;
-		printf(" file size: %d chunk size => %d \n",f_size,f_chunk_size);
+		//printf(" file size: %d chunk size => %d \n",f_size,f_chunk_size);
 	
 		for(i=1;i<= maps;i++){
 			rewind(fp);
-			printf("rewind position => %d\n",ftell(fp));
+		//	printf("rewind position => %d\n",ftell(fp));
 		
 			fseek(fp,i*f_chunk_size-1,SEEK_CUR);
 		
@@ -220,10 +244,10 @@ void *run_job_scheduler(int maps){
 			//printf(" fp position char => %c\n",fgetc(fp));
 		
 			while((c=fgetc(fp)) != '\n'){
-				printf(" while loop fp position char => %c\n",c);
+		//		printf(" while loop fp position char => %c\n",c);
 		
 			}
-		printf(" fp position  at end of line => %d\n",ftell(fp));
+		//printf(" fp position  at end of line => %d\n",ftell(fp));
 		schedule[i]=1+(int) ftell(fp);
 		}
 	
