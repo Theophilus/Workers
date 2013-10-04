@@ -8,17 +8,17 @@
 
 void map();
 void reduce();
-void add_map_to_shm();
-void *run_job_scheduler(int maps);
+void add_map_to_shm(void *result);
+void run_job_scheduler(int maps);
+void write_result_to_file();
 
 char IN_FILE[30];
 const char OUT_FILE[30];
 int schedule[100];
 int job_num;
+int SHMSZ;
 
-//pthread_mutex_t lock;
-
-#define SHMSZ 1024
+pthread_mutex_t lock;
 
 typedef struct word_key{
  	char *word;
@@ -43,22 +43,28 @@ int main(int args, char * argv[]){
 	strcpy(IN_FILE, argv[10]);
  	 // printf("file name: %s\n",IN_FILE);
  	 strcpy(OUT_FILE, argv[12]);
- 	 
-  	/* create shared memory segment. */
-  	 shmid = shm_open(shm_name, O_CREAT | O_RDWR, 0666);
-  
-	/* configure size */
-	ftruncate(shmid,SHMSZ);
 	
+	/* get number mappers for process/threads */
 	int num_map= atoi(argv[6]);
+	
+	/* get number reducers for process/threads */
   	int num_red= atoi(argv[8]);
   	int f_size,i ;
   	
-  	/* create job junks */
+  	/* create job junks among num processes/threads*/
 	run_job_scheduler(num_map);
+	
+	/* create shared memory segment. */
+  	 if((shmid = shm_open(shm_name,O_CREAT | O_RDWR, 0666)) == -1){
+  	 	printf("shared memory open failed");
+  	 	exit(1);
+  	 }
+  
+	/* configure size */
+	ftruncate(shmid,SHMSZ);
 		
 	for(i=0;i<=num_map;i++){
-		printf("%d array has: %d start schedule\n",i,schedule[i]);
+		//printf("%d array has: %d start schedule\n",i,schedule[i]);
 			
 	}
 	
@@ -107,20 +113,15 @@ int main(int args, char * argv[]){
 
 
  	}
+ 	
+ 	shm_unlink (shm_name);
 	return 0;
 }
 
 
 void map(){
   	//printf("I was in map\n");
-  
-  	/*
- 	 int shmid;
- 	 int *shm;
- 	 int *filemap;
- 	 int start_line;
-	*/
-	
+  	
 	/* word key pointer*/
 	Word_key *main_ptr;
 	Word_key *wk_ptr;
@@ -128,12 +129,6 @@ void map(){
 	Word_key *curr_ptr;
 	
 	int word_exist=-1;
-	
-	//main_ptr=malloc(sizeof(Word_key));
-	
-	/* word buff*/
-	//char str[80];
-	//printf("size of string :%d\n", sizeof(str));
 	
 	/* get file pointer number*/
 	// printf("Job number =>%d\n",job_num);
@@ -143,10 +138,7 @@ void map(){
 	
 	printf("%d got start number =>%u and end number =>%u\n",getpid(),start_pos, end_pos);
 	
-	//char buffer=malloc(filechunk_size);
-	
 	FILE *fp;
-	char line[20];
 	char *str;
 	// printf("before file loop");
 	if( (fp=fopen(IN_FILE,"r")) == NULL){
@@ -156,9 +148,9 @@ void map(){
 	else{
 		rewind(fp);
 		fseek(fp,start_pos,SEEK_CUR);
-		printf("fptr pos =>%d\n",ftell(fp));
+		//printf("fptr pos =>%d\n",ftell(fp));
 		
-	 	while( ftell(fp) != end_pos){
+	 	while((ftell(fp) < end_pos)){
 	  		/* get a word from file */
 			fscanf(fp,"%s",&str);
 			printf("word scanned =>%s\n",&str);
@@ -171,8 +163,7 @@ void map(){
 					printf("word exists!!!!!\n");
 					word_exist=0;
 					search_ptr->count++;
-					printf("word: [%s] count:[%d]\n",&search_ptr->word,search_ptr->count);
-					
+					printf("word: [%s]  exist ! count:[%d]\n",&search_ptr->word,search_ptr->count);
 					break;
 				}
 				
@@ -180,22 +171,23 @@ void map(){
 			}
 			
 			if( word_exist = -1 ){
-			    printf("in new word\n");
+			    //printf("in new word\n");
 			    wk_ptr=malloc(sizeof(Word_key));
 				wk_ptr->word=str;
 				wk_ptr->count=1;
 			    
 			    if(main_ptr == NULL){
 			    
-			    	printf("in  NULL new word\n");
+			    	//printf("in  NULL new word\n");
 			    	main_ptr = curr_ptr = wk_ptr;
 			    }
 			    else{
-			    	printf("in next new word\n");
+			    	//printf("in next new word\n");
 					curr_ptr->nextPtr= wk_ptr;
 					curr_ptr= curr_ptr->nextPtr;	
 				}
 			}
+			str=NULL;
 				
 	 	}
 	 
@@ -203,6 +195,8 @@ void map(){
       fclose(fp);
       
     free(wk_ptr);
+    
+   // add_map_to_shm(main_ptr);
 	
 }
 
@@ -213,7 +207,7 @@ void reduce(){
 
 }
 
-void *run_job_scheduler(int maps){
+void run_job_scheduler(int maps){
 
 	//printf(" I was in scheduler\n");
 	
@@ -227,13 +221,19 @@ void *run_job_scheduler(int maps){
       exit(1);
     }
 	else{
-	  fseek(fp, 0L, SEEK_END);
+	/* get file size*/
+	 	fseek(fp, 0L, SEEK_END);
 		f_size = ftell(fp);
+		
+		/* set shared memory size to size of file*/
+		SHMSZ=f_size;
 		//printf(" fp position before => %d char %c\n",ftell(fp),fgetc(fp));
 		
+		/* divide file among processes/threads */
 		f_chunk_size=f_size/maps;
 		//printf(" file size: %d chunk size => %d \n",f_size,f_chunk_size);
 	
+		/* set ending point of job to end of line */
 		for(i=1;i<= maps;i++){
 			rewind(fp);
 		//	printf("rewind position => %d\n",ftell(fp));
@@ -248,7 +248,7 @@ void *run_job_scheduler(int maps){
 		
 			}
 		//printf(" fp position  at end of line => %d\n",ftell(fp));
-		schedule[i]=1+(int) ftell(fp);
+		schedule[i]=(int) ftell(fp);
 		}
 	
 	fclose(fp);
@@ -256,10 +256,32 @@ void *run_job_scheduler(int maps){
 	
 }
 
-void add_map_to_shm(char *result){
+void add_map_to_shm(void *result){
+	
+	int *filemap,shm;
+  	int shmid;
+ 	const char *shm_name="filemap";
+	
+	pthread_mutex_init(&lock, NULL);
+	
+	/* open shared memory segment. */
+  	 if((shmid = shm_open(shm_name,O_CREAT | O_RDWR, 0666)) == -1){
+  	 	printf("shared memory open failed");
+  	 	exit(1);
+  	 }
+  	 
+	/* map shared memory to object*/
+	filemap=mmap(0,SHMSZ,PROT_WRITE,MAP_SHARED,shmid,0);
 
+	for (shm = filemap; shm != NULL; shm++){
+	
+	}
+	shm++=result;
+	pthread_mutex_destroy(&lock);
+}
+
+void write_result_to_file(){
 
 
 
 }
-
