@@ -5,6 +5,7 @@
 #include <sys/shm.h>
 #include <sys/stat.h>
 #include <sys/mman.h>
+#include <pthread.h>
 
 void map();
 void reduce();
@@ -17,7 +18,6 @@ const char OUT_FILE[30];
 int schedule[100];
 int job_num;
 int SHMSZ;
-
 pthread_mutex_t lock;
 
 typedef struct word_key{
@@ -196,7 +196,7 @@ void map(){
       
     free(wk_ptr);
     
-   // add_map_to_shm(main_ptr);
+    add_map_to_shm(main_ptr);
 	
 }
 
@@ -258,11 +258,12 @@ void run_job_scheduler(int maps){
 
 void add_map_to_shm(void *result){
 	
-	int *filemap,shm;
+	int *filemap;
+	char *shm;
   	int shmid;
  	const char *shm_name="filemap";
 	
-	pthread_mutex_init(&lock, NULL);
+	pthread_mutex_lock(&lock);
 	
 	/* open shared memory segment. */
   	 if((shmid = shm_open(shm_name,O_CREAT | O_RDWR, 0666)) == -1){
@@ -272,12 +273,21 @@ void add_map_to_shm(void *result){
   	 
 	/* map shared memory to object*/
 	filemap=mmap(0,SHMSZ,PROT_WRITE,MAP_SHARED,shmid,0);
-
-	for (shm = filemap; shm != NULL; shm++){
 	
+	shm = filemap;
+	
+	int ptr_hasNext= 1;
+	
+	while(ptr_hasNext == 1){
+		printf("was in add loop\n");
+		if(*shm == NULL){
+			printf("was in loop check\n");
+			ptr_hasNext = 0;	
+		}
+		shm++;
 	}
-	shm++=result;
-	pthread_mutex_destroy(&lock);
+	*shm=result;
+	pthread_mutex_unlock(&lock);
 }
 
 void write_result_to_file(){
