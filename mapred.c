@@ -16,7 +16,7 @@ typedef struct word_key{
 void map();
 void reduce();
 void map_job_scheduler(int num_map);
-void red_job_scheduler(int num_map,int num_red);
+void red_job_scheduler (int num_map, int num_red);
 void add_map_to_shm( Word_key *result,int job_number);
 void add_red_to_shm( Word_key *result);
 Word_key* mergeSort(Word_key *final_list);
@@ -45,13 +45,15 @@ int main(int args, char * argv[]){
   	Word_key *filemap,*shm,*final_output;
   	int map_shmid,red_shmid;
  	const char *map_shm_name="maps";
-	const char *red_shm_name="rud";
+	const char *red_shm_name="red";
 	char *type=argv[2];
   
   	/* connect file name to global file variable */
 	strcpy(IN_FILE, argv[10]);
+	
  	 // printf("file name: %s\n",IN_FILE);
  	strcpy(OUT_FILE, argv[12]);
+ 	
 	/* get number mappers for process/threads */
 	int num_map= atoi(argv[6]);
 	
@@ -63,7 +65,14 @@ int main(int args, char * argv[]){
 	map_job_scheduler(num_map);
 	
 	/* run reduce job scheduler*/
-	red_job_scheduler(num_map,num_red);
+	//red_job_scheduler(num_map,num_red);
+	int job_chunk;
+	job_chunk= (num_map)/num_red;
+	for(i=0 ; i < num_red ;i++){
+		red_schedule[i] = job_chunk*i; 
+	
+	}
+	red_schedule[num_red]=num_map;
 	
 	/* create maps shared memory segment. */
   	if((map_shmid = shm_open(map_shm_name,O_CREAT | O_RDWR, 0666)) <0){
@@ -286,9 +295,9 @@ void reduce(){
 		if(loop1_count == start_pos){
 			loop2_count=loop1_count;
 			for( ; *shm_ptr != NULL;shm_ptr++){
-				printf("in shm_ptr2 loop with count: %d\n",loop1_count);
+				printf("in shm_ptr2 loop with count: %d\n",loop2_count);
 				if(loop2_count == end_pos){
-					printf("shm_ptr2 BREAK!! with count: %d\n",loop1_count);
+					printf("shm_ptr2 BREAK!! with count: %d\n",loop2_count);
 					break;
 				}
 				else{
@@ -316,7 +325,9 @@ void reduce(){
 						}
 					}
 				}
+				loop2_count++;
 			}
+			
 		}
 		loop1_count++;
 	}
@@ -374,11 +385,11 @@ void map_job_scheduler(int maps){
 
 void red_job_schedular(int num_maps,int num_red){
 
-	int job_chunk= num_maps/num_red;
-	
+	int job_chunk;
+	job_chunk= (num_maps)/num_red;
 	int i;
-	for(i=0;i < num_red;i++){
-		red_schedule[i]=job_chunk; 
+	for(i=0 ; i < num_red ;i++){
+		red_schedule[i] = job_chunk*i; 
 	
 	}
 	red_schedule[num_red]=num_maps;
