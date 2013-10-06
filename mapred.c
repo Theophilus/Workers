@@ -19,7 +19,9 @@ void map_job_scheduler(int num_map);
 void red_job_scheduler(int num_map,int num_red);
 void add_map_to_shm( Word_key *result,int job_number);
 void add_red_to_shm( Word_key *result);
-void mergeSort(Word_key *final_list);
+Word_key* mergeSort(Word_key *final_list);
+Word_key* Final_merge(Word_key *first, Word_key *second);
+void Split(Word_key *source, Word_key **front, Word_key **back);
 void write_result_to_file(Word_key *final_list, char *type);
 
 char IN_FILE[30];
@@ -446,81 +448,85 @@ void add_red_to_shm(Word_key *result){
   pthread_mutex_unlock(&red_lock);
 
 }
-/*
-void mergeSort(Word_key *final_list){
+Word_key* mergeSort(Word_key *final_list){
+  Word_key *head = final_list;
+  Word_key *first, *second;
+  
+  if ((head == NULL) || (head->nextPtr == NULL)){
+    return;
+  }
+  
+  Split(head, &first, &second);
+  mergeSort(&first);
+  mergeSort(&second);
 
-  Word_key *shmSort, *start;
-  int shmid;
-  
-  if((shmid = shm_open(shm_sort_name,O_CREAT | O_RDWR, 0666)) == -1){
-    printf("shared memory open failed");
-    exit(1);
+  head = Final_merge(first, second);
+  return(head);
+}
+
+void Split(Word_key *source, Word_key **first, Word_key **second){
+  Word_key *a, *b;
+  if (source == NULL || source->nextPtr == NULL){
+    *first = source;
+    *second = NULL;
   }
-  
-  shmSort = (Word_key *)mmap(0,SHMSZ,PROT_WRITE,MAP_SHARED,shmid,0);
-  
-  start = shmSort;
-  while(start != NULL){
-    start++;
+  else{
+    a = source;
+    b = source->nextPtr;
+    while (b != NULL){
+      b = b->nextPtr;
+      if (b != NULL){
+	a = a->nextPtr;
+	b = b->nextPtr;
+      }
+    }
+    *first = source;
+    *second = a->nextPtr;
+    a->nextPtr = NULL;
   }
-  
+}
+
+Word_key* Final_merge(Word_key *a, Word_key *b){
+  Word_key *out = NULL;
+  if (a == NULL){
+    return(b);
+  }
+  else if (b==NULL){
+    return(a);
+  }
   int i = 0;
-  while (shm != NULL && shm2 != NULL) {
-    int a = 0;
-    while (a != -1) {
-      if ((shm->word[a] < shm2->word[a]) && (shm->word[a] != NULL) && (shm2->[a] != NULL)) {
-	start->word = shm->word;
-	start->count = shm->count;
-	start++;
-	shm++;
-	a = -1;
-      }
-      else if ((shm->word[a] > shm2->word[a]) && (shm->word[a] != NULL) && (shm2->word != NULL)) {
-	start->word = shm2->word;
-	start->count = shm2->count;
-	start++;
-	shm2++;
-	a = -1;
-      }
-      else if ((shm->word[a] != NULL) && (shm2->word[a] = NULL)) {
-	start->word = shm2->word;
-	start->count = shm2->count;
-	start++;
-	shm++;
-	a = -1;
-      }
-      else if ((shm2->word[a] != NULL) && (shm->word[a] = NULL)) {
-	start->word = shm->word;
-	start->count = shm->count;
-	start++;
-	shm2++;
-	a = -1;
-      }
-      else if ((shm2->word[a]==NULL) && (shm->word[a]==NULL)){
-	start->word = shm->word;
-	start->count = shm->count + shm2->count;
-	start++;
-	shm++;
-	shm2++;
-	a = -1;
-      } 
-      else  {
-	if (shm != NULL &&  shm2 == NULL) {
-	  start->word = shm->word;
-	  start->count = shm->count;
-	  start++;
-	}
-	else if (shm2 != NULL && shm == NULL) {
-	  start->word = shm2->word;
-	  start->count = shm2->count;
-	  start++;
-	}
-	a = -1
-      }
-      a++;
+  while(i != -1) {
+    if (a->word[i] < b->word[i]){
+      out = a;
+      out->nextPtr = Final_merge(a->nextPtr, b);
+      i = -1;
+    }
+    else if (a->word[i] > b->word[i]){
+      out = b;
+      out->nextPtr = Final_merge(a, b->nextPtr);
+      i = -1;
+    }
+    else if ((a->word[i] == NULL) && (b->word[i] != NULL)){
+      out = a;
+      out->nextPtr = Final_merge(a->nextPtr, b);
+      i = -1;
+    }
+    else if ((a->word[i] != NULL) && (b->word[i] == NULL)){
+      out = b;
+      out->nextPtr = Final_merge(a, b->nextPtr);
+      i = -1;
+    }
+    else if ((a->word[i] == NULL) && (b->word[i] == NULL)){
+      out = a;
+      out->nextPtr = Final_merge(a->nextPtr, b);
+      i = -1;
+    }
+    else {
+      i++;
     }
   }
-}*/
+  return(out);
+}
 
 void write_result_to_file(Word_key *final_list, char *type){
 
