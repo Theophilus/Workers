@@ -8,13 +8,16 @@
 #include <fcntl.h>           /* For O_* constants */
 #include <errno.h>
 #include <unistd.h>
-/*
-typedef struct word_key{
+
+struct wordchain{
 	char *word;
-	int count;
-	struct word_key *nextPtr;
-} Word_key;
-*/
+	struct wordchain *next;
+};
+typedef struct wordchain wordlist;
+
+wordlist *root=NULL;
+wordlist *runner=NULL;
+
 void *thread_mapping( void *ptr );
 void mapper();
 int i;
@@ -81,8 +84,47 @@ int main(int argc, char **argv){
 		}
 		free(thread);
 		free(threadcount);
-		exit(0);
-  	}
+	}
+	//Shared Memory implementation
+
+	int shm = shm_open("/myshm", O_RDWR | O_CREAT, 0777);
+	if (shm < 0) {
+		perror("Could not open shm:");
+		return 0;
+	}
+
+	int counter=0;
+	int size=0;
+	int len=0;
+	runner = root;
+	
+	while(runner!=NULL){		
+		len+=strlen(runner->word)+1;
+		counter++;
+		runner = runner -> next;
+	}
+	size = len+counter*sizeof(wordlist);//+counter*sizeof(wordlist->word)+counter*sizeof(wordlist->next);
+	write(shm, root, size));
+	//printf("Result: %d\n", write(shm, root, strlen(word_in) + 1));
+	//write(shm, word_in, strlen(word_in) + 1)
+
+	//printf("%d\n%d\n",size,len);
+/*
+	runner = root;
+	while(runner){
+		printf("%s\n", runner->word);
+		runner = runner -> next;
+	}
+	runner = root;
+	wordlist *p;
+	wordlist *nexter;
+	for (p = runner; p!=NULL; p=nexter){
+		free(p->word);
+		nexter = p->next;
+		free(p);
+	}
+*/	
+	exit(0);
 }
 
 void *thread_mapping( void *ptr ){
@@ -101,7 +143,6 @@ void mapper()
 	char *line_in=strdup(newline);
 	
 	if (feof(str)){
-		//pthread_mutex_unlock(&mutex);	  //use if mutex lock was used before thread was created
 		return;
 	}
 	char *tempstr, *token, *saveptr;
@@ -109,21 +150,14 @@ void mapper()
 		token = strtok_r(tempstr," ",&saveptr);
 		if (token == NULL)
 			break;	
-		//pthread_mutex_lock(&mutex);		not sure yet if mutex is necessary here, or anywhere
-			printf("%s\n",token);
-		//pthread_mutex_unlock(&mutex);
+		pthread_mutex_lock(&mutex);		//not sure yet if mutex is necessary here, or anywhere
+			runner = (wordlist *) malloc (sizeof(wordlist));
+			runner->word = (char*) malloc(sizeof(token));
+			strcpy(runner->word,token);
+			runner->next = root;
+			root = runner;
+		pthread_mutex_unlock(&mutex);
 	}
-	//pthread_mutex_unlock(&mutex);
-
-//Shared Memory implementation
-/*
-	int shm = shm_open("/myshm", O_RDWR | O_CREAT, 0777);
-	if (shm < 0) {
-		perror("Could not open shm:");
-		return 0;
-	}
-	printf("Result: %d\n", write(shm, word_in, strlen(word_in) + 1));
-*/
 	free(line_in);		//frees strdup malloc'd variable
 }
 
