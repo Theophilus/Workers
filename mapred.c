@@ -65,14 +65,7 @@ int main(int args, char * argv[]){
 	map_job_scheduler(num_map);
 	
 	/* run reduce job scheduler*/
-	//red_job_scheduler(num_map,num_red);
-	int job_chunk;
-	job_chunk= (num_map)/num_red;
-	for(i=0 ; i < num_red ;i++){
-		red_schedule[i] = job_chunk*i; 
-	
-	}
-	red_schedule[num_red]=num_map;
+	red_job_scheduler(num_map,num_red);
 	
 	/* create maps shared memory segment. */
   	if((map_shmid = shm_open(map_shm_name,O_CREAT | O_RDWR, 0666)) <0){
@@ -163,7 +156,9 @@ int main(int args, char * argv[]){
    			job_num=i;
       		pthread_create( &red_thread_id[i], NULL, reduce, NULL );
    		}
- 
+ 		for(j=0; j < num_red; j++){
+     		pthread_join( red_thread_id[j], NULL);
+  		 }
 
  	}
  	
@@ -173,8 +168,8 @@ int main(int args, char * argv[]){
     	exit(1);
   	}
   	shm=filemap;
-  	//final_output=mergeSort(shm);
- 	//write_to_file(final_output,type);
+  	final_output=mergeSort(shm);
+ 	write_to_file(final_output,type);
  	
  	/* delete all shared memory created */
  	shm_unlink (map_shm_name);
@@ -332,7 +327,7 @@ void reduce(){
 		loop1_count++;
 	}
 	
-	//add_to_red_shm(main_list);
+	add_to_red_shm(main_list);
 }
 
 void map_job_scheduler(int maps){
@@ -459,6 +454,7 @@ void add_red_to_shm(Word_key *result){
   pthread_mutex_unlock(&red_lock);
 
 }
+
 Word_key* mergeSort(Word_key *final_list){
   Word_key *head = final_list;
   Word_key *first, *second;
