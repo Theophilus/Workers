@@ -16,12 +16,13 @@ typedef struct word_key{
 } Word_key;
 */
 void *thread_mapping( void *ptr );
+void mapper();
 int i;
+FILE *f_in, *f_out;
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 int main(int argc, char **argv){
 
-	FILE *f_in, *f_out;
 	char *app, *impl, *maps, *reduces, *input, *output;
 	int num_maps, num_reduces;
 
@@ -73,7 +74,7 @@ int main(int argc, char **argv){
 			for (i=0;i<num_maps;i++){
 				if (feof(f_in))
 					break;
-				threadcount[i] = pthread_create( &thread[i], NULL, thread_mapping, (void*) f_in););
+				threadcount[i] = pthread_create( &thread[i], NULL, thread_mapping, NULL);//(void*) f_in););
 			}
 			for (i=0;i<num_maps;i++)
 				pthread_join(thread[i], NULL);
@@ -84,10 +85,14 @@ int main(int argc, char **argv){
   	}
 }
 
-void *thread_mapping( void *ptr )
+void *thread_mapping( void *ptr ){
+	mapper();	
+}
+void mapper()
 {	
 	FILE *str;
-	str = (FILE*) ptr;	
+	//str = (FILE*) ptr;	
+	str=f_in;	
 	char newline[150];
 	fgets(newline,150,str);
 	char *endptr = strchr(newline,'\n');
